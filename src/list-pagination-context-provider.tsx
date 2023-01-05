@@ -1,9 +1,10 @@
 import React from 'react';
+import create from 'zustand';
 
 type PaginationState = {
   totalItems: number;
   pageSize: number;
-  currentPage: number;
+  currentPage?: number;
 };
 
 type PaginationMeta = {
@@ -19,6 +20,7 @@ export const usePaginationContext = create<{
   pagination: Pagination;
   setPagination: (pg: Pagination) => void;
   setNextPage: () => void;
+  setPrevPage: () => void;
   setFirstPage: () => void;
 }>((set, get) => ({
   pagination: {
@@ -29,10 +31,42 @@ export const usePaginationContext = create<{
     previousEnabled: false,
     totalItems: 0,
   },
-  setPagination: (args: PaginationArgs) => set({ pagination: args }),
-  setNextPage: () => {},
-  setPrevPage: () => {},
-  setFirstPage: () => {},
+  setPagination: (args: PaginationArgs) =>
+    set(({ pagination }) => ({
+      pagination: {
+        ...pagination,
+        ...args,
+        nextEnabled: args.totalItems - args.pageSize > 0,
+        totalPages: Math.ceil(args.totalItems / args.pageSize),
+      },
+    })),
+  setNextPage: () =>
+    set(({ pagination }) => ({
+      pagination: {
+        ...pagination,
+        currentPage: pagination.currentPage + 1,
+        nextEnabled: pagination.currentPage + 1 < pagination.totalPages,
+        previousEnabled: true,
+      },
+    })),
+  setPrevPage: () =>
+    set(({ pagination }) => ({
+      pagination: {
+        ...pagination,
+        currentPage: pagination.currentPage - 1,
+        nextEnabled: true,
+        previousEnabled: Boolean(pagination.currentPage),
+      },
+    })),
+  setFirstPage: () =>
+    set(({ pagination }) => ({
+      pagination: {
+        ...pagination,
+        currentPage: 0,
+        nextEnabled: pagination.totalItems - pagination.pageSize > 0,
+        totalPages: Math.ceil(pagination.totalItems / pagination.pageSize),
+      },
+    })),
 }));
 
 export interface ListContextProps {
@@ -44,19 +78,15 @@ export interface ListContextProps {
 type ListPaginationContextProps = ListContextProps;
 
 const ListPaginationContextProvider: FCC<{ value: ListPaginationContextProps }> = ({ children, value }) => {
-  const { setPagination } = usePaginationContext();
+  const { setPagination, pagination } = usePaginationContext();
 
   React.useEffect(() => {
-    /*
     setPagination({
-      totalPages: totalPages,
-      pageSize: value.perPage,
-      currentPage,
-      nextEnabled,
-      previousEnabled,
+      ...pagination,
       totalItems: value.total,
+      currentPage: value.currentPage ?? 0,
+      pageSize: value.perPage,
     });
-*/
   }, [value]);
 
   return <>{children}</>;
